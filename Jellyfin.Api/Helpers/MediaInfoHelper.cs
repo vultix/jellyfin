@@ -12,6 +12,7 @@ using Jellyfin.Data.Enums;
 using Jellyfin.Database.Implementations.Entities;
 using Jellyfin.Database.Implementations.Enums;
 using Jellyfin.Extensions;
+using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Extensions;
 using MediaBrowser.Common.Net;
 using MediaBrowser.Controller;
@@ -179,6 +180,7 @@ public class MediaInfoHelper
     /// <param name="allowAudioStreamCopy">Allow audio stream copy.</param>
     /// <param name="alwaysBurnInSubtitleWhenTranscoding">Always burn-in subtitle when transcoding.</param>
     /// <param name="ipAddress">Requesting IP address.</param>
+    /// <param name="playbackSpeed">Optional. Playback speed to apply server-side when transcoding over HLS.</param>
     public void SetDeviceSpecificData(
         BaseItem item,
         MediaSourceInfo mediaSource,
@@ -198,7 +200,8 @@ public class MediaInfoHelper
         bool allowVideoStreamCopy,
         bool allowAudioStreamCopy,
         bool alwaysBurnInSubtitleWhenTranscoding,
-        IPAddress ipAddress)
+        IPAddress ipAddress,
+        double? playbackSpeed = null)
     {
         var streamBuilder = new StreamBuilder(_mediaEncoder, _logger);
 
@@ -316,6 +319,8 @@ public class MediaInfoHelper
                 {
                     mediaSource.TranscodingUrl += "&alwaysBurnInSubtitleWhenTranscoding=true";
                 }
+
+                mediaSource.TranscodingUrl += GetPlaybackSpeedUrlParam(streamInfo, playbackSpeed);
             }
             else
             {
@@ -338,6 +343,8 @@ public class MediaInfoHelper
                     {
                         mediaSource.TranscodingUrl += "&alwaysBurnInSubtitleWhenTranscoding=true";
                     }
+
+                    mediaSource.TranscodingUrl += GetPlaybackSpeedUrlParam(streamInfo, playbackSpeed);
                 }
             }
 
@@ -513,6 +520,23 @@ public class MediaInfoHelper
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Returns the query parameter that makes an HLS transcode play at the requested speed,
+    /// or an empty string if server-side playback speed is disabled or doesn't apply.
+    /// Clients detect support by the presence of this parameter in the TranscodingUrl.
+    /// </summary>
+    private string GetPlaybackSpeedUrlParam(StreamInfo streamInfo, double? requestedSpeed)
+    {
+        if (EncodingJobInfo.NormalizePlaybackSpeed(requestedSpeed) is not double speed
+            || streamInfo.SubProtocol != MediaStreamProtocol.hls
+            || !_serverConfigurationManager.GetEncodingOptions().EnableServerSidePlaybackSpeed)
+        {
+            return string.Empty;
+        }
+
+        return string.Format(CultureInfo.InvariantCulture, "&playbackSpeed={0:0.####}", speed);
     }
 
     private int? GetMaxBitrate(int? clientMaxBitrate, User user, IPAddress ipAddress)

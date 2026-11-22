@@ -96,19 +96,7 @@ namespace MediaBrowser.Controller.MediaEncoding
         /// Gets the effective server-side playback speed, or <c>null</c> when the stream plays at normal speed.
         /// When set, the output timeline is "stream time" = media time / speed.
         /// </summary>
-        public double? PlaybackSpeed
-        {
-            get
-            {
-                var speed = BaseRequest?.PlaybackSpeed;
-                if (speed is null || !double.IsFinite(speed.Value) || Math.Abs(speed.Value - 1.0) < 0.001)
-                {
-                    return null;
-                }
-
-                return Math.Clamp(speed.Value, 0.5, 4.0);
-            }
-        }
+        public double? PlaybackSpeed => NormalizePlaybackSpeed(BaseRequest?.PlaybackSpeed);
 
         /// <summary>
         /// Gets the runtime of the output stream (media runtime divided by the playback speed).
@@ -539,6 +527,21 @@ namespace MediaBrowser.Controller.MediaEncoding
         public bool EnableAudioVbrEncoding => BaseRequest.EnableAudioVbrEncoding;
 
         public int HlsListSize => 0;
+
+        /// <summary>
+        /// Validates a requested server-side playback speed.
+        /// </summary>
+        /// <param name="speed">The requested speed.</param>
+        /// <returns>The speed clamped to [0.5, 4], or <c>null</c> for normal speed or invalid input.</returns>
+        public static double? NormalizePlaybackSpeed(double? speed)
+        {
+            if (speed is null || !double.IsFinite(speed.Value) || Math.Abs(speed.Value - 1.0) < 0.001)
+            {
+                return null;
+            }
+
+            return Math.Clamp(speed.Value, 0.5, 4.0);
+        }
 
         /// <summary>
         /// Converts a position on the output stream's timeline to a position in the media.

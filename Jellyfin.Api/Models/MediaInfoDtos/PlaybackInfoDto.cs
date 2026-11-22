@@ -87,4 +87,11 @@ public class PlaybackInfoDto
     /// Gets or sets a value indicating whether always burn in subtitles when transcoding.
     /// </summary>
     public bool? AlwaysBurnInSubtitleWhenTranscoding { get; set; }
+
+    /// <summary>
+    /// Gets or sets the playback speed the client wants applied by the server when transcoding.
+    /// Honored only if server-side playback speed is enabled; the returned TranscodingUrl then
+    /// contains a playbackSpeed parameter.
+    /// </summary>
+    public double? PlaybackSpeed { get; set; }
 }

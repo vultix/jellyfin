@@ -81,6 +81,13 @@ public static class StreamingHelpers
             UserAgent = httpRequest.Headers[HeaderNames.UserAgent]
         };
 
+        if (state.PlaybackSpeed.HasValue
+            && !serverConfigurationManager.GetEncodingOptions().EnableServerSidePlaybackSpeed)
+        {
+            // The admin hasn't enabled it; play at normal speed.
+            streamingRequest.PlaybackSpeed = null;
+        }
+
         if (state.PlaybackSpeed.HasValue)
         {
             // Speed is applied with ffmpeg filters, so neither stream can be copied.

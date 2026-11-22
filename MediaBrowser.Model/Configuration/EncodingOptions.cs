@@ -18,6 +18,7 @@ public class EncodingOptions
     {
         EnableFallbackFont = false;
         EnableAudioVbr = false;
+        EnableServerSidePlaybackSpeed = false;
         DownMixAudioBoost = 2;
         DownMixStereoAlgorithm = DownMixStereoAlgorithms.None;
         MaxMuxingQueueSize = 2048;
@@ -89,6 +90,13 @@ public class EncodingOptions
     /// Gets or sets a value indicating whether audio VBR is enabled.
     /// </summary>
     public bool EnableAudioVbr { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether clients may request transcodes with the playback
+    /// speed applied by the server. Used by clients whose native player can't change speed with
+    /// audio (webOS). Requires a full video and audio transcode while sped up.
+    /// </summary>
+    public bool EnableServerSidePlaybackSpeed { get; set; }
 
     /// <summary>
     /// Gets or sets the audio boost applied when downmixing audio.
