@@ -2990,12 +2990,48 @@ namespace MediaBrowser.Controller.MediaEncoding
                         Math.Round(seconds)));
             }
 
+            if (state.PlaybackSpeed is double speed)
+            {
+                // Rescale timestamps first so that, with -copyts, audio lands on the same
+                // stream timeline (media time / speed) as the setpts-scaled video.
+                // atempo alone keeps the first input timestamp, desyncing A/V after a seek.
+                filters.Add(string.Format(CultureInfo.InvariantCulture, "asetpts=PTS/{0:0.####}", speed));
+                filters.Add(string.Format(CultureInfo.InvariantCulture, "atempo={0:0.####}", speed));
+            }
+
             if (filters.Count > 0)
             {
                 return " -af \"" + string.Join(',', filters) + "\"";
             }
 
             return string.Empty;
+        }
+
+        /// <summary>
+        /// Gets the video filters that apply server-side playback speed, or an empty string.
+        /// Must run last in the filter graph so burned-in subtitles are timed in media time.
+        /// </summary>
+        /// <param name="state">The encoding job state.</param>
+        /// <param name="framerate">The requested output framerate, if any.</param>
+        /// <returns>The filter string.</returns>
+        private static string GetPlaybackSpeedVideoFilter(EncodingJobInfo state, double? framerate)
+        {
+            if (state.PlaybackSpeed is not double speed)
+            {
+                return string.Empty;
+            }
+
+            var filter = string.Format(CultureInfo.InvariantCulture, "setpts=PTS/{0:0.####}", speed);
+
+            // Keep the output at the source frame rate: at >1x this drops frames instead of
+            // encoding speed-times as many, and keeps keyframe/segment math valid.
+            var outputFps = framerate ?? state.VideoStream?.ReferenceFrameRate;
+            if (outputFps is > 0)
+            {
+                filter += string.Format(CultureInfo.InvariantCulture, ",fps={0:0.###}", outputFps.Value);
+            }
+
+            return filter;
         }
 
         /// <summary>
@@ -6362,8 +6398,15 @@ namespace MediaBrowser.Controller.MediaEncoding
                     string.Join(',', mainFilters));
             }
 
+            var speedStr = GetPlaybackSpeedVideoFilter(state, framerate);
+
             if (overlayFilters?.Count == 0)
             {
+                if (speedStr.Length > 0)
+                {
+                    mainStr = mainStr.Length > 0 ? mainStr + "," + speedStr : speedStr;
+                }
+
                 // -vf "scale..."
                 return string.IsNullOrEmpty(mainStr) ? string.Empty : " -vf \"" + mainStr + "\"";
             }
@@ -6382,6 +6425,11 @@ namespace MediaBrowser.Controller.MediaEncoding
                         CultureInfo.InvariantCulture,
                         "{0}",
                         string.Join(',', overlayFilters));
+
+                if (speedStr.Length > 0)
+                {
+                    overlayStr += "," + speedStr;
+                }
 
                 var mapPrefix = Convert.ToInt32(state.SubtitleStream.IsExternal);
                 var subtitleStreamIndex = GetSubtitleStreamIndexForFfmpeg(state.MediaSource, state.SubtitleStream);

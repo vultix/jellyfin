@@ -92,6 +92,31 @@ namespace MediaBrowser.Controller.MediaEncoding
 
         public long? RunTimeTicks { get; set; }
 
+        /// <summary>
+        /// Gets the effective server-side playback speed, or <c>null</c> when the stream plays at normal speed.
+        /// When set, the output timeline is "stream time" = media time / speed.
+        /// </summary>
+        public double? PlaybackSpeed
+        {
+            get
+            {
+                var speed = BaseRequest?.PlaybackSpeed;
+                if (speed is null || !double.IsFinite(speed.Value) || Math.Abs(speed.Value - 1.0) < 0.001)
+                {
+                    return null;
+                }
+
+                return Math.Clamp(speed.Value, 0.5, 4.0);
+            }
+        }
+
+        /// <summary>
+        /// Gets the runtime of the output stream (media runtime divided by the playback speed).
+        /// </summary>
+        public long? StreamRunTimeTicks => PlaybackSpeed is double speed && RunTimeTicks.HasValue
+            ? (long)(RunTimeTicks.Value / speed)
+            : RunTimeTicks;
+
         public bool ReadInputAtNativeFramerate { get; set; }
 
         public string OutputFilePath { get; set; }
@@ -514,6 +539,15 @@ namespace MediaBrowser.Controller.MediaEncoding
         public bool EnableAudioVbrEncoding => BaseRequest.EnableAudioVbrEncoding;
 
         public int HlsListSize => 0;
+
+        /// <summary>
+        /// Converts a position on the output stream's timeline to a position in the media.
+        /// </summary>
+        /// <param name="streamTicks">The stream position.</param>
+        /// <returns>The media position.</returns>
+        public long? StreamTicksToMediaTicks(long? streamTicks) => PlaybackSpeed is double speed && streamTicks.HasValue
+            ? (long)(streamTicks.Value * speed)
+            : streamTicks;
 
         /// <summary>
         /// Adds the specified reason(s) to <see cref="TranscodeReasons"/>.
