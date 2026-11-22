@@ -83,6 +83,17 @@ public class EncodingHelperPlaybackSpeedTests
     }
 
     [Fact]
+    public void GetVideoProcessingFilterParam_SpeedWithMaxFramerate_ConvertsFrameRateOnlyAfterSpeed()
+    {
+        // Converting to 30 fps before slowing down would leave 15 distinct frames per second.
+        var state = BuildState(playbackSpeed: 0.5, sourceFps: 60f, maxFramerate: 30f);
+        var args = CreateHelper().GetVideoProcessingFilterParam(state, new EncodingOptions(), "libx264");
+
+        Assert.EndsWith("setpts=PTS/0.5,fps=30\"", args, StringComparison.Ordinal);
+        Assert.Equal(args.IndexOf("fps=", StringComparison.Ordinal), args.LastIndexOf("fps=", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void GetVideoProcessingFilterParam_NormalSpeed_HasNoSetpts()
     {
         var state = BuildState(playbackSpeed: null);
@@ -91,7 +102,7 @@ public class EncodingHelperPlaybackSpeedTests
         Assert.DoesNotContain("setpts", args, StringComparison.Ordinal);
     }
 
-    private static EncodingJobInfo BuildState(double? playbackSpeed)
+    private static EncodingJobInfo BuildState(double? playbackSpeed, float sourceFps = 23.976f, float? maxFramerate = null)
     {
         var video = new MediaStream
         {
@@ -100,8 +111,8 @@ public class EncodingHelperPlaybackSpeedTests
             Codec = "h264",
             Width = 1920,
             Height = 1080,
-            AverageFrameRate = 23.976f,
-            RealFrameRate = 23.976f,
+            AverageFrameRate = sourceFps,
+            RealFrameRate = sourceFps,
         };
         var audio = new MediaStream { Index = 1, Type = MediaStreamType.Audio, Codec = "ac3", Channels = 6 };
 
@@ -117,7 +128,7 @@ public class EncodingHelperPlaybackSpeedTests
             OutputVideoCodec = "libx264",
             OutputAudioCodec = "aac",
             OutputAudioChannels = 6,
-            BaseRequest = new VideoRequestDto { PlaybackSpeed = playbackSpeed },
+            BaseRequest = new VideoRequestDto { PlaybackSpeed = playbackSpeed, MaxFramerate = maxFramerate },
             IsVideoRequest = true,
             IsInputVideo = true,
         };

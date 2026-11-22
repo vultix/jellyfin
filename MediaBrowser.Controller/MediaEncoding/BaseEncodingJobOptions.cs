@@ -200,8 +200,7 @@ namespace MediaBrowser.Controller.MediaEncoding
         public bool AlwaysBurnInSubtitleWhenTranscoding { get; set; }
 
         /// <summary>
-        /// Gets or sets the playback speed multiplier to bake into the transcoded stream (e.g. 1.5).
-        /// Used by clients whose native player cannot change speed with audio (webOS, Tizen).
+        /// Gets or sets the playback speed multiplier applied during transcoding.
         /// </summary>
         public double? PlaybackSpeed { get; set; }
 

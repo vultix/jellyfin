@@ -84,7 +84,6 @@ public static class StreamingHelpers
         if (state.PlaybackSpeed.HasValue
             && !serverConfigurationManager.GetEncodingOptions().EnableServerSidePlaybackSpeed)
         {
-            // The admin hasn't enabled it; play at normal speed.
             streamingRequest.PlaybackSpeed = null;
         }
 

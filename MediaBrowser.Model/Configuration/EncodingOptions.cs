@@ -92,9 +92,7 @@ public class EncodingOptions
     public bool EnableAudioVbr { get; set; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether clients may request transcodes with the playback
-    /// speed applied by the server. Used by clients whose native player can't change speed with
-    /// audio (webOS). Requires a full video and audio transcode while sped up.
+    /// Gets or sets a value indicating whether clients can apply playback speed during transcoding.
     /// </summary>
     public bool EnableServerSidePlaybackSpeed { get; set; }
 

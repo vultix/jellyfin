@@ -3008,8 +3008,7 @@ namespace MediaBrowser.Controller.MediaEncoding
         }
 
         /// <summary>
-        /// Gets the video filters that apply server-side playback speed, or an empty string.
-        /// Must run last in the filter graph so burned-in subtitles are timed in media time.
+        /// Gets playback speed filters to apply after subtitle rendering.
         /// </summary>
         /// <param name="state">The encoding job state.</param>
         /// <param name="framerate">The requested output framerate, if any.</param>
@@ -6372,7 +6371,9 @@ namespace MediaBrowser.Controller.MediaEncoding
             overlayFilters?.RemoveAll(string.IsNullOrEmpty);
 
             var framerate = GetFramerateParam(state);
-            if (mainFilters is not null && framerate.HasValue)
+
+            // With a playback speed, the speed filter does the only frame rate conversion (after setpts).
+            if (mainFilters is not null && framerate.HasValue && !state.PlaybackSpeed.HasValue)
             {
                 var doDeintH2645 = IsDeinterlaceAvailable(state);
                 var fpsFilter = string.Format(CultureInfo.InvariantCulture, "fps={0}", framerate.Value);
@@ -6389,6 +6390,13 @@ namespace MediaBrowser.Controller.MediaEncoding
                 }
             }
 
+            var speedFilter = GetPlaybackSpeedVideoFilter(state, framerate);
+            if (speedFilter.Length > 0)
+            {
+                // Apply speed after subtitle rendering.
+                (overlayFilters?.Count > 0 ? overlayFilters : mainFilters)?.Add(speedFilter);
+            }
+
             var mainStr = string.Empty;
             if (mainFilters?.Count > 0)
             {
@@ -6398,15 +6406,8 @@ namespace MediaBrowser.Controller.MediaEncoding
                     string.Join(',', mainFilters));
             }
 
-            var speedStr = GetPlaybackSpeedVideoFilter(state, framerate);
-
             if (overlayFilters?.Count == 0)
             {
-                if (speedStr.Length > 0)
-                {
-                    mainStr = mainStr.Length > 0 ? mainStr + "," + speedStr : speedStr;
-                }
-
                 // -vf "scale..."
                 return string.IsNullOrEmpty(mainStr) ? string.Empty : " -vf \"" + mainStr + "\"";
             }
@@ -6425,11 +6426,6 @@ namespace MediaBrowser.Controller.MediaEncoding
                         CultureInfo.InvariantCulture,
                         "{0}",
                         string.Join(',', overlayFilters));
-
-                if (speedStr.Length > 0)
-                {
-                    overlayStr += "," + speedStr;
-                }
 
                 var mapPrefix = Convert.ToInt32(state.SubtitleStream.IsExternal);
                 var subtitleStreamIndex = GetSubtitleStreamIndexForFfmpeg(state.MediaSource, state.SubtitleStream);
